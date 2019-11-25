@@ -30,6 +30,7 @@ void Server::startButton()
 {
 
 	thread01.start();
+	thread01.init();
 	ui.startButton->setEnabled(false);
 	ui.stopButton->setEnabled(true);
 
@@ -37,10 +38,11 @@ void Server::startButton()
 
 int Server::stopButton()
 {
+	qDebug() << "Service is closing,please open service after a second";
 	thread01.stop();
 	ui.startButton->setEnabled(true);
 	ui.stopButton->setEnabled(false);
-
+	thread01.quit();
 	return 0;
 }
 
@@ -69,5 +71,6 @@ void Server::setLocalIP(QString localIP)
 }
 void Server::quitButton()
 {
-	close();
+	close();   //githubtest
 }
+

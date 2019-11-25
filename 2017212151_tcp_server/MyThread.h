@@ -21,11 +21,26 @@ public:
 	void stop();
 
 	QString time,IPAddress,content,localIP;
-
+	char* MyThread::RC4(char* C, char* key);
+	void init();
 
 protected:
 	void run();
 private:
+
+	WORD wVersionRequested;
+	WSADATA wsaData;
+	char PCname[100] = { "" };
+	char *IPaddress = NULL;
+	struct hostent FAR * lpHostEnt = NULL;
+	LPSTR lpAddr = NULL;
+	SOCKET servsock, clisock;
+	sockaddr_in tcpaddr, cliaddr;
+	char buff[256];
+	char buffer[1024] = "\0";
+	char key[256] = "password";
+
+
 	volatile bool stopped;
 signals:
 	void sendTime(QString);

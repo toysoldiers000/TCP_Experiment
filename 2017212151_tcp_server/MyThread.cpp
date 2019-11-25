@@ -2,6 +2,20 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QByteArray>
+
+//WORD wVersionRequested;
+//WSADATA wsaData;
+//char PCname[100] = { "" };
+//char *IPaddress = NULL;
+//struct hostent FAR * lpHostEnt = NULL;
+//LPSTR lpAddr = NULL;
+//SOCKET servsock, clisock;
+//sockaddr_in tcpaddr, cliaddr;
+//char buff[256];
+//char buffer[1024] = "\0";
+
+
+
 MyThread::MyThread(QObject *parent)
 	: QThread(parent)
 {
@@ -17,8 +31,7 @@ MyThread::~MyThread()
 void MyThread::run()
 {
 
-	WORD wVersionRequested;
-	WSADATA wsaData;
+	servsock = 0;
 	wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0)//初始化 ws2_32.dll 动态库
 	{
@@ -34,11 +47,10 @@ void MyThread::run()
 	//说明 ws2_32.dll 正确加载
 	qDebug() << "Load ws2_32.dll successfully!\n";
 	//获取本机 IP 地址
-	char PCname[100] = { "" };
-	char *IPaddress = NULL;
+
 	gethostname(PCname, sizeof(PCname));
 	qDebug() << "Local Hostname is %s.\n", PCname;
-	struct hostent FAR * lpHostEnt = gethostbyname(PCname);
+	lpHostEnt = gethostbyname(PCname);
 	if (lpHostEnt == NULL)
 	{
 		//产生错误
@@ -46,7 +58,7 @@ void MyThread::run()
 		return ;
 	}
 	//获取 IP
-	LPSTR lpAddr = lpHostEnt->h_addr_list[0];
+	lpAddr = lpHostEnt->h_addr_list[0];
 	if (lpAddr)
 	{
 		struct in_addr inAddr;
@@ -65,7 +77,7 @@ void MyThread::run()
 	}
 
 	//创建套接字
-	SOCKET servsock, clisock;
+	
 	qDebug() << "Create Socket...\n";
 	/**************************************************************/
 	servsock = socket(AF_INET, SOCK_STREAM, 0);
@@ -73,7 +85,7 @@ void MyThread::run()
 	int servport = 5555;
 	int iSockErr = 0;
 	//定义服务器地址结构
-	sockaddr_in tcpaddr, cliaddr;
+
 	int clilen = 0;
 	memset(&tcpaddr, 0, sizeof(tcpaddr));
 	tcpaddr.sin_family = AF_INET;
@@ -83,8 +95,7 @@ void MyThread::run()
 	//绑定套接字到服务器地址结构
 	qDebug() << "Binding...\n";
 	/**************************************************************/
-	if(stopped == false)
-	{
+	
 		iSockErr = bind(servsock, (sockaddr*)&tcpaddr, sizeof(tcpaddr));
 	
 	/**************************************************************/
@@ -93,7 +104,7 @@ void MyThread::run()
 			qDebug() << "Binding failed:%d\n", WSAGetLastError();//根据不同的错误类型进行不同的处理
 			this->stop();
 		}
-	}
+	
 	//函数调用成功，进行其他处理
 	//监听套接字
 	qDebug() << "Listening...\n";
@@ -116,13 +127,11 @@ void MyThread::run()
 
 	/**************************************************************/
 	qDebug() << "Accept TCP Client:%s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port);
-	char buff[256];
 	sprintf_s(buff, "Welcome you %s", inet_ntoa(cliaddr.sin_addr));
 	//发送欢迎词
 	/**************************************************************/
 	send(clisock, buff, sizeof(buff), 0);
 	/**************************************************************/
-	char buffer[1024] = "\0";
 
 
 	while (!stopped)
@@ -141,7 +150,7 @@ void MyThread::run()
 
 			IPAddress = QString::fromLocal8Bit(inet_ntoa(cliaddr.sin_addr));
 			emit sendIPAddress(IPAddress);
-
+			this->RC4(buffer, key);
 			content = QString::fromLocal8Bit(buffer);
 			emit sendContent(content);
 
@@ -157,18 +166,73 @@ void MyThread::run()
 		
 	}
 	stopped = false;
-	shutdown(clisock, 2);
-	shutdown(servsock, 2);
-	closesocket(clisock);
-	closesocket(servsock);
-	WSACleanup();
+
 	qDebug() << "Service is shutdown,you are able to open service again";
 }
 
 void MyThread::stop()
 {
+	shutdown(clisock, 2);
+	shutdown(servsock, 2);
+	closesocket(clisock);
+	closesocket(servsock);
+	WSACleanup();
 	stopped = true;
-	qDebug() << "Service is closing,please open service after a second";
+	
 	//return;
 }
 
+void MyThread::init()
+{
+	stopped = false;
+
+}
+
+char* MyThread::RC4(char* C, char* key)
+{
+	int S[256];
+	int T[256];
+
+	int  count = 0;
+	count = strlen(key);
+
+	for (int i = 0; i < 256; i++)
+	{
+		S[i] = i;
+		int tmp = i % count;
+		T[i] = key[tmp];
+	}
+
+	int j = 0;
+
+	for (int i = 0; i < 256; i++)
+	{
+		j = (j + S[i] + T[i]) % 256;
+		int tmp;
+		tmp = S[j];
+		S[j] = S[i];
+		S[i] = tmp;
+	}
+
+	int length = 0;
+	length = strlen(C);
+
+	int i;
+	i = 0, j = 0;
+
+	for (int p = 0; p < length; p++)
+	{
+
+		i = (i + 1) % 256;
+		j = (j + S[i]) % 256;
+		int tmp;
+		tmp = S[j];
+		S[j] = S[i];
+		S[i] = tmp;
+
+		int k = S[(S[i] + S[j]) % 256];
+		C[p] = C[p] ^ k;
+	}
+
+	return C;
+}

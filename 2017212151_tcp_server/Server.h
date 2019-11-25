@@ -9,7 +9,7 @@ class Server : public QWidget
 
 public:
 	Server(QWidget *parent = Q_NULLPTR);
-
+	char* RC4(char* C, char* key);
 public slots:
 	void startButton();
 	int stopButton();
