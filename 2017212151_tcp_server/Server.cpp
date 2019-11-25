@@ -71,6 +71,6 @@ void Server::setLocalIP(QString localIP)
 }
 void Server::quitButton()
 {
-	close();   //githubtest
+	close();   
 }
 
